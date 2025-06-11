@@ -1,0 +1,6 @@
+.env
+/backend/bin/
+/frontend-cli/target/
+/.idea/
+/.vscode/
+.DS_Store
