@@ -1,29 +1,13 @@
+mod cli;
+mod processor;
+
 use clap::Parser;
-
-/// Terminal DevTool CLI
-#[derive(Parser)]
-#[command(name = "mediatool")]
-#[command(version = "1.0")]
-#[command(about = "Convert, compress, and generate media files", long_about = None)]
-struct Cli {
-    #[arg(short, long)]
-    input: String,
-
-    #[arg(short, long)]
-    output: Option<String>,
-
-    #[arg(long)]
-    resolution: Option<String>,
-
-    #[arg(long)]
-    bitrate: Option<String>,
-
-    #[arg(long)]
-    format: Option<String>,
-}
+use cli::CliArgs;
 
 fn main() {
-    let args = Cli::parse();
-    println!("Processing: {}", args.input);
-    // Integrate ffmpeg command execution here
+    let args = CliArgs::parse();
+    println!("✅ CLI Args: {:#?}", args);
+
+    // Call the processor
+    processor::process_media(args);
 }
