@@ -31,7 +31,7 @@ fi
 
 # Create test directory if it doesn't exist
 TEST_DIR="./test_media"
-mkdir -p $TEST_DIR
+mkdir -p "$TEST_DIR"
 
 # Generate a test video if it doesn't exist
 TEST_VIDEO="$TEST_DIR/test_input.mp4"
