@@ -1,6 +1,24 @@
 .env
-/backend/bin/
+
+# Rust build artifacts
 /frontend-cli/target/
-/.idea/
+/frontend-cli/Cargo.lock
+**/*.rs.bk
+
+# Go build artifacts
+/backend/bin/
+/backend/terminal-devtool-backend
+/backend/vendor/
+
+# Test files
+/test_media/
+
+# Editor files
 /.vscode/
+/.idea/
+*.swp
+*.swo
+
+# OS files
 .DS_Store
+Thumbs.db
