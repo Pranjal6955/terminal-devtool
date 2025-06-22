@@ -1,7 +1,7 @@
 use crate::cli::CliArgs;
 
 pub fn process_media(args: CliArgs) {
-    println!("🚀 Starting media processing...");
+    println!("Starting media processing...");
 
     // Example: Construct an ffmpeg command (can be IPC call to backend later)
     let input = args.input;
