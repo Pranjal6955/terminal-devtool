@@ -1,0 +1,13 @@
+# Global owners
+* @Pranjal6955 @Va16hav07
+
+# Frontend CLI (Rust) - assign to Pranjal6955
+/frontend-cli/ @Pranjal6955
+*.rs @Pranjal6955
+
+# Backend (Go) - assign to Va16hav07  
+/backend/ @Va16hav07
+*.go @Va16hav07
+
+# Documentation
+*.md @Pranjal6955
