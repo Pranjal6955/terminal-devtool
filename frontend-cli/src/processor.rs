@@ -1,31 +1,199 @@
-use crate::cli::CliArgs;
+use std::{process::Command, path::Path};
+use anyhow::{Result, Context};
+use colored::*;
+use prettytable::{Table, row, cell};
 
-pub fn process_media(args: CliArgs) {
-    println!("Starting media processing...");
+use crate::{cli::{CliArgs, Commands}, client::ApiClient, models::{ProcessRequest, MediaInfo, CompareResult}};
 
-    // Example: Construct an ffmpeg command (can be IPC call to backend later)
-    let input = args.input;
-    let output = args.output.unwrap_or("output.mp4".to_string());
-    let mut ffmpeg_command = format!("ffmpeg -i {} ", input);
-
-    if let Some(res) = args.resolution {
-        ffmpeg_command.push_str(&format!("-s {} ", res));
-    }
-    if let Some(bitrate) = args.bitrate {
-        ffmpeg_command.push_str(&format!("-b:v {} ", bitrate));
-    }
-    if let Some(fmt) = args.format {
-        ffmpeg_command.push_str(&format!("output.{} ", fmt));
+pub fn process_media(args: CliArgs) -> Result<()> {
+    // Create API client if not in local mode
+    let client = if !args.local {
+        Some(ApiClient::new(args.backend_url))
     } else {
-        ffmpeg_command.push_str(&format!("{}", output));
-    }
-
-    println!("🛠️ Executing: {}", ffmpeg_command);
+        None
+    };
     
-    // Optional: execute with std::process::Command (real backend call can replace this)
-    // std::process::Command::new("sh")
-    //     .arg("-c")
-    //     .arg(ffmpeg_command)
-    //     .status()
-    //     .expect("Failed to execute ffmpeg");
+    // Check backend health if using API
+    if let Some(client) = &client {
+        if let Err(e) = client.check_health() {
+            eprintln!("{} {}", "⚠️".yellow(), format!("Backend connection failed: {}", e).yellow());
+            eprintln!("{} {}", "ℹ️".blue(), "Falling back to local mode.".blue());
+        }
+    }
+    
+    match args.command {
+        Commands::Process { 
+            input,
+            output,
+            resolution,
+            bitrate,
+            format
+        } => {
+            process_command(client, input, output, resolution, bitrate, format)?;
+        },
+        Commands::Compare { 
+            original, 
+            processed 
+        } => {
+            compare_command(client, &original, &processed)?;
+        },
+        Commands::Info { 
+            file 
+        } => {
+            info_command(client, &file)?;
+        }
+    }
+    
+    Ok(())
+}
+
+fn process_command(
+    client: Option<ApiClient>,
+    input: String,
+    output: Option<String>,
+    resolution: Option<String>,
+    bitrate: Option<String>,
+    format: Option<String>
+) -> Result<()> {
+    println!("{} {}", "🎬".bright_green(), "Starting media processing...".bright_green());
+    
+    // Use API client if available
+    if let Some(client) = client {
+        let request = ProcessRequest {
+            input: input.clone(),
+            output: output.clone(),
+            resolution: resolution.clone(),
+            bitrate: bitrate.clone(),
+            format: format.clone(),
+        };
+        
+        println!("{} {}", "🌐".cyan(), "Sending request to backend server...".cyan());
+        
+        match client.process_media(request) {
+            Ok(response) => {
+                println!("{} {}", "✅".green(), format!("Processing complete. Output: {}", response.output).green());
+                return Ok(());
+            },
+            Err(e) => {
+                eprintln!("{} {}", "⚠️".yellow(), format!("Backend processing failed: {}", e).yellow());
+                eprintln!("{} {}", "ℹ️".blue(), "Falling back to local processing...".blue());
+            }
+        }
+    }
+    
+    // Fall back to local processing
+    let output = output.unwrap_or_else(|| {
+        let output_name = format!("processed_{}", Path::new(&input).file_name().unwrap().to_string_lossy());
+        if let Some(fmt) = &format {
+            return format!("{}.{}", output_name, fmt);
+        }
+        output_name.to_string()
+    });
+    
+    let mut ffmpeg_args = vec!["-i", &input];
+    
+    if let Some(res) = &resolution {
+        ffmpeg_args.push("-s");
+        ffmpeg_args.push(res);
+    }
+    
+    if let Some(br) = &bitrate {
+        ffmpeg_args.push("-b:v");
+        ffmpeg_args.push(br);
+    }
+    
+    ffmpeg_args.push(&output);
+    
+    println!("{} {}", "🛠️".yellow(), format!("Running ffmpeg locally with args: {:?}", ffmpeg_args).yellow());
+    
+    let status = Command::new("ffmpeg")
+        .args(&ffmpeg_args)
+        .status()
+        .context("Failed to execute ffmpeg")?;
+        
+    if status.success() {
+        println!("{} {}", "✅".green(), format!("Processing complete. Output: {}", output).green());
+    } else {
+        eprintln!("{} {}", "❌".red(), "Processing failed".red());
+        return Err(anyhow::anyhow!("ffmpeg command failed"));
+    }
+    
+    Ok(())
+}
+
+fn compare_command(client: Option<ApiClient>, original: &str, processed: &str) -> Result<()> {
+    println!("{} {}", "🔍".bright_green(), "Comparing media files...".bright_green());
+    
+    let result = if let Some(client) = client {
+        println!("{} {}", "🌐".cyan(), "Sending comparison request to backend server...".cyan());
+        client.compare_media(original, processed)?
+    } else {
+        // Local comparison not implemented - would require ffprobe parsing
+        return Err(anyhow::anyhow!("Local comparison requires backend server"));
+    };
+    
+    print_comparison_result(&result);
+    
+    Ok(())
+}
+
+fn info_command(client: Option<ApiClient>, file_path: &str) -> Result<()> {
+    println!("{} {}", "ℹ️".bright_green(), format!("Getting info for {}...", file_path).bright_green());
+    
+    let info = if let Some(client) = client {
+        println!("{} {}", "🌐".cyan(), "Sending info request to backend server...".cyan());
+        client.get_media_info(file_path)?
+    } else {
+        // Local info not implemented - would require ffprobe parsing
+        return Err(anyhow::anyhow!("Local media info requires backend server"));
+    };
+    
+    print_media_info(&info);
+    
+    Ok(())
+}
+
+fn print_media_info(info: &MediaInfo) {
+    let mut table = Table::new();
+    
+    table.add_row(row!["Property", "Value"]);
+    table.add_row(row!["Filename", &info.filename]);
+    table.add_row(row!["Format", &info.format]);
+    table.add_row(row!["Duration", &info.duration]);
+    table.add_row(row!["Resolution", &info.resolution]);
+    table.add_row(row!["Bitrate", &info.bitrate]);
+    table.add_row(row!["Size (bytes)", &info.size.to_string()]);
+    
+    println!();
+    table.printstd();
+    println!();
+}
+
+fn print_comparison_result(result: &CompareResult) {
+    let mut table = Table::new();
+    
+    table.add_row(row!["Property", "Original", "Processed"]);
+    table.add_row(row!["Filename", &result.original.filename, &result.processed.filename]);
+    table.add_row(row!["Format", &result.original.format, &result.processed.format]);
+    table.add_row(row!["Resolution", &result.original.resolution, &result.processed.resolution]);
+    table.add_row(row!["Bitrate", &result.original.bitrate, &result.processed.bitrate]);
+    table.add_row(row!["Size (bytes)", 
+                       &result.original.size.to_string(), 
+                       &result.processed.size.to_string()]);
+    
+    println!();
+    table.printstd();
+    println!();
+    
+    // Print size difference
+    let diff_text = format!("Size reduction: {:.2}%", result.size_diff_percent);
+    if result.size_diff_percent > 0.0 {
+        println!("{} {}", "🔽".green(), diff_text.green());
+    } else if result.size_diff_percent < 0.0 {
+        println!("{} {}", "🔼".red(), diff_text.red());
+    } else {
+        println!("{} {}", "⚖️", diff_text);
+    }
+    
+    println!();
 }
