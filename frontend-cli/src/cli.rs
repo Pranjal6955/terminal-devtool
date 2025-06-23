@@ -58,4 +58,19 @@ pub enum Commands {
         #[arg(short, long)]
         file: String,
     },
+
+    /// Convert media file format
+    Convert {
+        /// Input file
+        #[arg(long)]
+        input: String,
+
+        /// Output file (optional)
+        #[arg(long)]
+        output: Option<String>,
+
+        /// Target format (e.g., webm, jpg)
+        #[arg(long)]
+        format: String,
+    },
 }
