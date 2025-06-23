@@ -15,18 +15,18 @@ import (
 )
 
 const (
-	DefaultPort = "8080"
-	DefaultHost = "localhost"
+	DefaultPort     = "8080"
+	DefaultHost     = "localhost"
 	ShutdownTimeout = 5 * time.Second
 )
 
 func main() {
 	fmt.Println("📼 Terminal DevTool Go Backend")
 	fmt.Println("✨ Version 0.2.0")
-	
+
 	// Set up structured logging
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
-	
+
 	// Get base directory for media files (default to current directory)
 	baseDir, err := os.Getwd()
 	if err != nil {
@@ -39,19 +39,18 @@ func main() {
 
 	// Create a new mux router and apply middleware
 	mux := http.NewServeMux()
-	
+
 	// Register routes
 	mux.HandleFunc("/api/process", apiHandler.ProcessMedia)
 	mux.HandleFunc("/api/compare", apiHandler.CompareMedia)
 	mux.HandleFunc("/api/info", apiHandler.GetMediaInfo)
 
-	// Add a simple health check endpoint
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, `{"status":"OK","version":"0.2.0"}`)
-	})
-	
+	// Register health check endpoints
+	mux.HandleFunc("/health", apiHandler.HealthCheck)
+
+	// Backward compatibility for simple health check
+	mux.HandleFunc("/api/health", apiHandler.HealthCheck)
+
 	// Apply middleware
 	var rootHandler http.Handler = mux
 	rootHandler = middleware.Recovery(rootHandler)
@@ -87,14 +86,14 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 	fmt.Println("\n🛑 Shutting down server...")
-	
+
 	// Create a deadline for graceful shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), ShutdownTimeout)
 	defer cancel()
-	
+
 	if err := server.Shutdown(ctx); err != nil {
 		log.Fatalf("Server forced to shutdown: %v", err)
 	}
-	
+
 	fmt.Println("👋 Server successfully shut down")
 }
