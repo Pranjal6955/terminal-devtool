@@ -35,6 +35,7 @@ type ProcessRequest struct {
 	FrameRate  string `json:"frame_rate,omitempty"`
 	CRF        string `json:"crf,omitempty"`    // Constant Rate Factor for quality-based compression
 	Preset     string `json:"preset,omitempty"` // Encoding preset (ultrafast, fast, medium, slow, etc.)
+	DryRun     bool   `json:"dry_run,omitempty"` // If true, return command string without executing
 }
 
 // ProcessProgress represents the progress of a media processing operation
@@ -169,18 +170,21 @@ func ProcessMedia(req ProcessRequest) (string, error) {
 		output = strings.TrimSuffix(output, filepath.Ext(output)) + ext
 	}
 
-	// First, get the input file duration
-	inputInfo, err := GetMediaInfo(req.Input)
-	if err != nil {
-		return "", fmt.Errorf("failed to get input file info: %w", err)
-	}
+	// Skip getting media info if it's a dry run
+	var duration time.Duration
+	if !req.DryRun {
+		// First, get the input file duration
+		inputInfo, err := GetMediaInfo(req.Input)
+		if err != nil {
+			return "", fmt.Errorf("failed to get input file info: %w", err)
+		}
 
-	// Parse duration string to time.Duration
-	duration := time.Duration(0)
-	if inputInfo.Duration != "" {
-		durationStr := strings.TrimSuffix(inputInfo.Duration, "s")
-		if durationFloat, err := strconv.ParseFloat(durationStr, 64); err == nil {
-			duration = time.Duration(durationFloat * float64(time.Second))
+		// Parse duration string to time.Duration
+		if inputInfo.Duration != "" {
+			durationStr := strings.TrimSuffix(inputInfo.Duration, "s")
+			if durationFloat, err := strconv.ParseFloat(durationStr, 64); err == nil {
+				duration = time.Duration(durationFloat * float64(time.Second))
+			}
 		}
 	}
 
@@ -248,8 +252,17 @@ func ProcessMedia(req ProcessRequest) (string, error) {
 	// Add output filename as the last argument
 	args = append(args, output)
 
+	// Build the command string
+	cmdString := fmt.Sprintf("ffmpeg %s", strings.Join(args, " "))
+
 	// Log the command we're about to execute
-	fmt.Printf("Executing: ffmpeg %s\n", strings.Join(args, " "))
+	fmt.Printf("Executing: %s\n", cmdString)
+
+	// If it's a dry run, just return the command string
+	if req.DryRun {
+		fmt.Printf("[Dry Run] %s\n", cmdString)
+		return cmdString, nil
+	}
 
 	// Create a directory for the output file if it doesn't exist
 	outputDir := filepath.Dir(output)

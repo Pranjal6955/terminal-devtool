@@ -39,6 +39,10 @@ pub enum Commands {
         /// Output format (e.g., webm, mp4)
         #[arg(long)]
         format: Option<String>,
+
+        /// Print the command that would be run without executing it
+        #[arg(long)]
+        dry_run: bool,
     },
     
     /// Compare two media files

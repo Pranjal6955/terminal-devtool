@@ -27,9 +27,10 @@ pub fn process_media(args: CliArgs) -> Result<()> {
             output,
             resolution,
             bitrate,
-            format
+            format,
+            dry_run
         } => {
-            process_command(client, input, output, resolution, bitrate, format)?;
+            process_command(client, input, output, resolution, bitrate, format, dry_run)?;
         },
         Commands::Compare { 
             original, 
@@ -69,9 +70,14 @@ fn process_command(
     output: Option<String>,
     resolution: Option<String>,
     bitrate: Option<String>,
-    format: Option<String>
+    format: Option<String>,
+    dry_run: bool
 ) -> Result<()> {
-    println!("{} {}", "🎬".bright_green(), "Starting media processing...".bright_green());
+    if dry_run {
+        println!("{} {}", "🔍".bright_blue(), "Dry run mode - displaying command without executing...".bright_blue());
+    } else {
+        println!("{} {}", "🎬".bright_green(), "Starting media processing...".bright_green());
+    }
     
     // Use API client if available
     if let Some(client) = client {
@@ -81,6 +87,7 @@ fn process_command(
             resolution: resolution.clone(),
             bitrate: bitrate.clone(),
             format: format.clone(),
+            dry_run,
         };
         
         println!("{} {}", "🌐".cyan(), "Sending request to backend server...".cyan());
@@ -119,6 +126,15 @@ fn process_command(
     }
     
     ffmpeg_args.push(&output);
+    
+    // Build command string
+    let cmd_string = format!("ffmpeg {}", ffmpeg_args.join(" "));
+    
+    if dry_run {
+        // Just print the command that would be run
+        println!("{} {}", "📝".bright_blue(), format!("[Dry Run] {}", cmd_string).bright_blue());
+        return Ok(());
+    }
     
     println!("{} {}", "🛠️".yellow(), format!("Running ffmpeg locally with args: {:?}", ffmpeg_args).yellow());
     
