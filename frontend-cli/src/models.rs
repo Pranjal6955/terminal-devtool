@@ -46,3 +46,10 @@ pub struct CompareResult {
     pub processed: MediaInfo,
     pub size_diff_percent: f64,
 }
+
+#[derive(Debug)]
+pub struct CompressOptions {
+    pub input: String,
+    pub output: Option<String>,
+    pub bitrate: String,
+}

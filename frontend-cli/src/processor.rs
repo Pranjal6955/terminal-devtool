@@ -1,9 +1,9 @@
 use std::{process::Command, path::Path};
 use anyhow::{Result, Context};
 use colored::*;
-use prettytable::{Table, row, cell};
+use prettytable::{Table, row};
 
-use crate::{cli::{CliArgs, Commands}, client::ApiClient, models::{ProcessRequest, MediaInfo, CompareResult}};
+use crate::{cli::{CliArgs, Commands}, client::ApiClient, models::{ProcessRequest, MediaInfo, CompareResult, CompressOptions}};
 
 pub fn process_media(args: CliArgs) -> Result<()> {
     // Create API client if not in local mode
@@ -58,9 +58,35 @@ pub fn process_media(args: CliArgs) -> Result<()> {
                 "[Dry Run] Converting {} to {} format... (output: {})",
                 input, format, output_str
             );
+        },
+        Commands::Compress {
+            input,
+            output,
+            bitrate
+        } => {
+            let opts = CompressOptions {
+                input,
+                output,
+                bitrate,
+            };
+            compress_command(opts)?;
         }
     }
     
+    Ok(())
+}
+
+fn compress_command(opts: CompressOptions) -> Result<()> {
+    if !opts.bitrate.ends_with('k') && !opts.bitrate.ends_with('M') {
+        return Err(anyhow::anyhow!("Invalid bitrate format. Must end with 'k' or 'M'."));
+    }
+
+    if let Some(output_path) = opts.output {
+        println!("[Dry Run] Compressing {} to {} with bitrate {}...", opts.input, output_path, opts.bitrate);
+    } else {
+        println!("[Dry Run] Compressing {} with bitrate {}...", opts.input, opts.bitrate);
+    }
+
     Ok(())
 }
 
@@ -229,3 +255,4 @@ fn print_comparison_result(result: &CompareResult) {
     
     println!();
 }
+
