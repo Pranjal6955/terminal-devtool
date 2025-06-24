@@ -77,4 +77,19 @@ pub enum Commands {
         #[arg(long)]
         format: String,
     },
+
+    /// Compress a video file
+    Compress {
+        /// Input file
+        #[arg(long)]
+        input: String,
+
+        /// Output file (optional)
+        #[arg(long)]
+        output: Option<String>,
+
+        /// Target bitrate (e.g., 1000k, 2M)
+        #[arg(long)]
+        bitrate: String,
+    },
 }
