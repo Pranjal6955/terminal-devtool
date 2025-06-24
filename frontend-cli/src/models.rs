@@ -11,6 +11,12 @@ pub struct ProcessRequest {
     pub bitrate: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub format: Option<String>,
+    #[serde(skip_serializing_if = "is_false")]
+    pub dry_run: bool,
+}
+
+fn is_false(b: &bool) -> bool {
+    !*b
 }
 
 #[derive(Debug, Serialize, Deserialize)]
