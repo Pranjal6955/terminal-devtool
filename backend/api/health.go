@@ -20,7 +20,7 @@ type HealthCheckResponse struct {
 func (h *Handler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	response := HealthCheckResponse{
 		Status:          "OK",
-		Version:         "0.2.0",
+		Version:         "0.1.0",
 		FFmpegAvailable: false,
 		Components:      make(map[string]string),
 	}

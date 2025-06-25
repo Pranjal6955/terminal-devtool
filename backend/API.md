@@ -15,7 +15,7 @@ Example response:
 ```json
 {
   "status": "OK",
-  "version": "0.2.0",
+  "version": "0.1.0",
   "ffmpeg_available": true,
   "ffmpeg_version": "ffmpeg version 4.4.1",
   "components": {
@@ -113,6 +113,36 @@ Response:
   "bitrate_reduction_percent": 60.0,
   "format_changed": false,
   "codec_changed": false
+}
+```
+
+### Compress Media
+```
+POST /api/compress
+```
+
+Compress a video file using specified bitrate.
+
+Request body:
+```json
+{
+  "input": "input.mp4",
+  "output": "compressed.mp4",
+  "bitrate": "800k"
+}
+```
+
+Parameters:
+- `input` (required): Path to the input file
+- `output` (optional): Path to the output file. If not provided, a default name will be generated (original_filename_compressed.ext)
+- `bitrate` (required): Target bitrate (must end with 'k' or 'M', e.g., "800k", "2M")
+
+Response:
+```json
+{
+  "output": "compressed.mp4",
+  "status": "success",
+  "message": "Video compressed successfully"
 }
 ```
 
