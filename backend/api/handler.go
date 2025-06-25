@@ -96,6 +96,62 @@ func (h *Handler) CompareMedia(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(result)
 }
 
+// CompressMedia handles requests to compress video files with a specific bitrate
+func (h *Handler) CompressMedia(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Input   string `json:"input"`
+		Output  string `json:"output,omitempty"`
+		Bitrate string `json:"bitrate"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Validate required fields
+	if req.Input == "" {
+		http.Error(w, "Input path is required", http.StatusBadRequest)
+		return
+	}
+
+	if req.Bitrate == "" {
+		http.Error(w, "Bitrate is required", http.StatusBadRequest)
+		return
+	}
+
+	// Resolve paths relative to base directory if not absolute
+	if !filepath.IsAbs(req.Input) {
+		req.Input = filepath.Join(h.BaseDir, req.Input)
+	}
+
+	if req.Output != "" && !filepath.IsAbs(req.Output) {
+		req.Output = filepath.Join(h.BaseDir, req.Output)
+	}
+
+	// Compress the media file
+	err := media.CompressMedia(req.Input, req.Output, req.Bitrate)
+	if err != nil {
+		http.Error(w, "Compression failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Return the result
+	response := map[string]string{
+		"output":  req.Output,
+		"status":  "success",
+		"message": "Video compressed successfully",
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
 // GetMediaInfo handles requests to get media file information
 func (h *Handler) GetMediaInfo(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {

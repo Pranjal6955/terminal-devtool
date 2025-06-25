@@ -22,7 +22,7 @@ const (
 
 func main() {
 	fmt.Println("📼 Terminal DevTool Go Backend")
-	fmt.Println("✨ Version 0.2.0")
+	fmt.Println("✨ Version 0.1.0")
 
 	// Set up structured logging
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
@@ -44,6 +44,7 @@ func main() {
 	mux.HandleFunc("/api/process", apiHandler.ProcessMedia)
 	mux.HandleFunc("/api/compare", apiHandler.CompareMedia)
 	mux.HandleFunc("/api/info", apiHandler.GetMediaInfo)
+	mux.HandleFunc("/api/compress", apiHandler.CompressMedia)
 
 	// Register health check endpoints
 	mux.HandleFunc("/health", apiHandler.HealthCheck)
