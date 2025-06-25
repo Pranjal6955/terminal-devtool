@@ -78,13 +78,14 @@ pub fn process_media(args: CliArgs) -> Result<()> {
 
 fn compress_command(opts: CompressOptions) -> Result<()> {
     if !opts.bitrate.ends_with('k') && !opts.bitrate.ends_with('M') {
+        eprintln!("{} {}", "[x]".bright_red(), "Invalid bitrate format. Must end with 'k' or 'M'.".bright_red());
         return Err(anyhow::anyhow!("Invalid bitrate format. Must end with 'k' or 'M'."));
     }
 
     if let Some(output_path) = opts.output {
-        println!("[Dry Run] Compressing {} to {} with bitrate {}...", opts.input, output_path, opts.bitrate);
+        println!("{} {}", "[✓]".bright_green(), format!("Compressing {} to {} with bitrate {}...", opts.input, output_path, opts.bitrate).bright_green());
     } else {
-        println!("[Dry Run] Compressing {} with bitrate {}...", opts.input, opts.bitrate);
+        println!("{} {}", "[✓]".bright_green(), format!("Compressing {} with bitrate {}...", opts.input, opts.bitrate).bright_green());
     }
 
     Ok(())
@@ -100,9 +101,9 @@ fn process_command(
     dry_run: bool
 ) -> Result<()> {
     if dry_run {
-        println!("{} {}", "🔍".bright_blue(), "Dry run mode - displaying command without executing...".bright_blue());
+        println!("{} {}", "[!]".yellow(), "Dry run mode - displaying command without executing...".yellow());
     } else {
-        println!("{} {}", "🎬".bright_green(), "Starting media processing...".bright_green());
+        println!("{} {}", "[✓]".bright_green(), "Starting media processing...".bright_green());
     }
     
     // Use API client if available
@@ -158,7 +159,7 @@ fn process_command(
     
     if dry_run {
         // Just print the command that would be run
-        println!("{} {}", "📝".bright_blue(), format!("[Dry Run] {}", cmd_string).bright_blue());
+        println!("{} {}", "[!]".yellow(), format!("[Dry Run] {}", cmd_string).yellow());
         return Ok(());
     }
     
@@ -170,9 +171,9 @@ fn process_command(
         .context("Failed to execute ffmpeg")?;
         
     if status.success() {
-        println!("{} {}", "✅".green(), format!("Processing complete. Output: {}", output).green());
+        println!("{} {}", "[✓]".bright_green(), format!("Processing complete. Output: {}", output).bright_green());
     } else {
-        eprintln!("{} {}", "❌".red(), "Processing failed".red());
+        eprintln!("{} {}", "[x]".bright_red(), "Processing failed".bright_red());
         return Err(anyhow::anyhow!("ffmpeg command failed"));
     }
     
@@ -180,34 +181,28 @@ fn process_command(
 }
 
 fn compare_command(client: Option<ApiClient>, original: &str, processed: &str) -> Result<()> {
-    println!("{} {}", "🔍".bright_green(), "Comparing media files...".bright_green());
-    
+    println!("{} {}", "[!]".bright_blue(), "Comparing media files...".bright_blue());
     let result = if let Some(client) = client {
-        println!("{} {}", "🌐".cyan(), "Sending comparison request to backend server...".cyan());
+        println!("{} {}", "[!]".yellow(), "Sending comparison request to backend server...".yellow());
         client.compare_media(original, processed)?
     } else {
-        // Local comparison not implemented - would require ffprobe parsing
+        eprintln!("{} {}", "[x]".bright_red(), "Local comparison requires backend server".bright_red());
         return Err(anyhow::anyhow!("Local comparison requires backend server"));
     };
-    
     print_comparison_result(&result);
-    
     Ok(())
 }
 
 fn info_command(client: Option<ApiClient>, file_path: &str) -> Result<()> {
-    println!("{} {}", "ℹ️".bright_green(), format!("Getting info for {}...", file_path).bright_green());
-    
+    println!("{} {}", "[!]".bright_blue(), format!("Getting info for {}...", file_path).bright_blue());
     let info = if let Some(client) = client {
-        println!("{} {}", "🌐".cyan(), "Sending info request to backend server...".cyan());
+        println!("{} {}", "[!]".yellow(), "Sending info request to backend server...".yellow());
         client.get_media_info(file_path)?
     } else {
-        // Local info not implemented - would require ffprobe parsing
+        eprintln!("{} {}", "[x]".bright_red(), "Local media info requires backend server".bright_red());
         return Err(anyhow::anyhow!("Local media info requires backend server"));
     };
-    
     print_media_info(&info);
-    
     Ok(())
 }
 
@@ -229,7 +224,6 @@ fn print_media_info(info: &MediaInfo) {
 
 fn print_comparison_result(result: &CompareResult) {
     let mut table = Table::new();
-    
     table.add_row(row!["Property", "Original", "Processed"]);
     table.add_row(row!["Filename", &result.original.filename, &result.processed.filename]);
     table.add_row(row!["Format", &result.original.format, &result.processed.format]);
@@ -238,21 +232,18 @@ fn print_comparison_result(result: &CompareResult) {
     table.add_row(row!["Size (bytes)", 
                        &result.original.size.to_string(), 
                        &result.processed.size.to_string()]);
-    
     println!();
     table.printstd();
     println!();
-    
     // Print size difference
-    let diff_text = format!("Size reduction: {:.2}%", result.size_diff_percent);
+    let diff_text = format!("Size reduction: {:.2}%", result.size_diff_percent.abs());
     if result.size_diff_percent > 0.0 {
-        println!("{} {}", "🔽".green(), diff_text.green());
+        println!("{} {}", "[✓]".bright_green(), diff_text.bright_green());
     } else if result.size_diff_percent < 0.0 {
-        println!("{} {}", "🔼".red(), diff_text.red());
+        println!("{} {}", "[x]".bright_red(), diff_text.bright_red());
     } else {
-        println!("{} {}", "⚖️", diff_text);
+        println!("{} {}", "[!]".yellow(), diff_text.yellow());
     }
-    
     println!();
 }
 
