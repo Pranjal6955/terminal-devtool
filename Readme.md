@@ -56,9 +56,98 @@ terminal-devtool/
 - **FFmpeg** - For media processing
   - Check with: `ffmpeg -version`
   - Install from: [https://ffmpeg.org/download.html](https://ffmpeg.org/download.html)
+- **OpenSSL Development Libraries** - Required for the frontend CLI
+  - For Linux: `libssl-dev` (Ubuntu/Debian) or `openssl-devel` (Fedora/RHEL)
+  - For macOS: OpenSSL via Homebrew
+  - For Windows: OpenSSL via vcpkg or precompiled binaries
 - **Docker & Docker Compose** (Optional) - For containerized deployment
   - Check with: `docker --version` and `docker-compose --version`
   - Install from: [https://docs.docker.com/get-docker/](https://docs.docker.com/get-docker/)
+
+### Detailed Installation Instructions
+
+#### Linux (Ubuntu/Debian)
+
+```bash
+# Install Go
+sudo apt update
+sudo apt install golang-go
+
+# Install Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source $HOME/.cargo/env
+
+# Install FFmpeg
+sudo apt install ffmpeg
+
+# Install OpenSSL development libraries (needed for the frontend)
+sudo apt install libssl-dev pkg-config
+
+# Optional: Install Docker & Docker Compose
+sudo apt install docker.io docker-compose
+sudo systemctl start docker
+sudo systemctl enable docker
+sudo usermod -aG docker $USER  # Log out and log back in after this
+```
+
+#### macOS
+
+```bash
+# Install Homebrew if not already installed
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Install Go
+brew install go
+
+# Install Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source $HOME/.cargo/env
+
+# Install FFmpeg
+brew install ffmpeg
+
+# Install OpenSSL via Homebrew (needed for the frontend)
+brew install openssl pkg-config
+
+# Optional: Install Docker Desktop
+# Download from https://www.docker.com/products/docker-desktop/
+```
+
+#### Windows
+
+1. **Install Go**:
+   - Download the installer from [golang.org/dl](https://golang.org/dl/)
+   - Run the installer and follow the prompts
+   - Verify installation with `go version` in Command Prompt
+
+2. **Install Rust**:
+   - Download and run the rustup-init.exe from [rustup.rs](https://rustup.rs/)
+   - Follow the prompts to install Rust
+   - Verify installation with `rustc --version`
+
+3. **Install FFmpeg**:
+   - Download from [ffmpeg.org/download.html](https://ffmpeg.org/download.html) (Windows builds)
+   - Extract the ZIP file to a folder (e.g., `C:\ffmpeg`)
+   - Add the `bin` folder to your PATH environment variable
+   - Verify with `ffmpeg -version` in a new Command Prompt
+
+4. **Install OpenSSL for Windows**:
+   - Option 1: Install with vcpkg:
+     ```
+     git clone https://github.com/Microsoft/vcpkg.git
+     cd vcpkg
+     bootstrap-vcpkg.bat
+     vcpkg install openssl:x64-windows
+     ```
+   - Option 2: Download precompiled binaries from [slproweb.com/products/Win32OpenSSL.html](https://slproweb.com/products/Win32OpenSSL.html)
+   - Set environment variables:
+     ```
+     setx OPENSSL_DIR C:\path\to\openssl
+     setx OPENSSL_LIB_DIR C:\path\to\openssl\lib
+     ```
+
+5. **Optional: Install Docker Desktop**:
+   - Download and install Docker Desktop from [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop/)
 
 ### 1. Clone the Repository and Quick Setup
 
@@ -135,6 +224,79 @@ cargo run -- --help
 ./target/debug/frontend-cli --help
 ```
 
+### 4. Running with Different File Types
+
+Terminal DevTool supports various media formats. Here are commands to work with different file types:
+
+#### Video Files
+
+```bash
+# Compress an MP4 file
+cargo run -- compress --input video.mp4 --output compressed.mp4 --bitrate 800k
+
+# Convert MP4 to WebM format
+cargo run -- process -i video.mp4 -o video.webm --format webm
+
+# Resize a video to 720p
+cargo run -- process -i video.mp4 -o resized.mp4 --resolution 1280x720
+```
+
+#### Image Files
+
+```bash
+# Convert JPEG to PNG
+cargo run -- process -i image.jpg -o image.png --format png
+
+# Resize an image to 800x600
+cargo run -- process -i image.png -o resized.png --resolution 800x600
+```
+
+#### GIF Files
+
+```bash
+# Compress a GIF
+cargo run -- compress --input animation.gif --output compressed.gif --bitrate 500k
+
+# Convert video to GIF
+cargo run -- process -i video.mp4 -o animation.gif --format gif
+```
+
+#### Batch Processing (Example Script)
+
+Create a bash script (`batch_process.sh`) to process multiple files:
+
+```bash
+#!/bin/bash
+# Example batch processing script
+
+# Directory containing input files
+INPUT_DIR="./input_media"
+# Directory for output files
+OUTPUT_DIR="./processed_media"
+
+# Create output directory if it doesn't exist
+mkdir -p "$OUTPUT_DIR"
+
+# Process all MP4 files in the input directory
+for file in "$INPUT_DIR"/*.mp4; do
+  filename=$(basename "$file")
+  output_name="${filename%.*}_compressed.mp4"
+  
+  echo "Processing $filename..."
+  cd frontend-cli
+  cargo run -- compress --input "../$file" --output "../$OUTPUT_DIR/$output_name" --bitrate 800k
+  cd ..
+done
+
+echo "Batch processing complete!"
+```
+
+Make the script executable and run it:
+```bash
+chmod +x batch_process.sh
+./batch_process.sh
+```
+
 ## 🧪 Example Usage
 
 ### Process Media Files
@@ -145,6 +307,16 @@ cargo run -- process -i input.mp4 -o output.mp4 --resolution 1280x720 --bitrate 
 
 # Process locally without backend
 cargo run -- --local process -i input.mp4 -o output.mp4 --resolution 1280x720
+```
+
+### Compress Video Files
+
+```bash
+# Compress a video to a specific bitrate (e.g., 800k)
+cargo run -- compress --input input.mp4 --output compressed.mp4 --bitrate 800k
+
+# Compress locally without specifying output (auto-generates output filename)
+cargo run -- --local compress --input input.mp4 --bitrate 2M
 ```
 
 ### Compare Media Files
@@ -192,6 +364,14 @@ cargo run -- info -f video.mp4
 | Option | Description | Example |
 |------|-------------|---------|
 | `-f, --file` | Media file path | `-f video.mp4` |
+
+### Compress Command
+
+| Option | Description | Example |
+|------|-------------|---------|
+| `--input` | Input file path | `--input input.mp4` |
+| `--output` | Output file path (optional) | `--output compressed.mp4` |
+| `--bitrate` | Target bitrate (must end with 'k' or 'M') | `--bitrate 800k` |
 
 ## 🧰 Built With
 
@@ -273,7 +453,20 @@ The test script will:
    - Update Rust: `rustup update`
    - Clean and rebuild: `cargo clean && cargo build`
 
-2. **Connection to backend fails**:
+2. **OpenSSL-related errors during build**:
+   - **Linux**: Install the development package with `sudo apt install libssl-dev pkg-config` (Ubuntu/Debian) or `sudo dnf install openssl-devel pkgconfig` (Fedora/RHEL)
+   - **macOS**: Install OpenSSL with `brew install openssl pkg-config` and set environment variables:
+     ```bash
+     export OPENSSL_DIR=$(brew --prefix openssl)
+     export PKG_CONFIG_PATH="$(brew --prefix openssl)/lib/pkgconfig"
+     ```
+   - **Windows**: Set the OpenSSL directory environment variable:
+     ```batch
+     setx OPENSSL_DIR C:\path\to\openssl
+     setx OPENSSL_LIB_DIR C:\path\to\openssl\lib
+     ```
+
+3. **Connection to backend fails**:
    - Verify the backend is running: `curl http://localhost:8080/health`
    - Check if the `--backend-url` parameter is correct
    - Try using `--local` mode to bypass the backend
